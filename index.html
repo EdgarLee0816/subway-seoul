@@ -3,91 +3,88 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>실시간 역 도착 정보</title>
+    <title>실시간 도착 정보</title>
     <style>
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
         }
-        th, td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: center;
+        .station-info {
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            padding: 10px;
+            border-radius: 5px;
         }
-        th {
-            background-color: #f4f4f4;
+        .station-info h3 {
+            margin: 0;
+            font-size: 18px;
+        }
+        .station-info p {
+            margin: 5px 0;
         }
     </style>
 </head>
 <body>
-    <h1>실시간 역 도착 정보</h1>
-    <table id="arrival-table">
-        <thead>
-            <tr>
-                <th>열차 번호</th>
-                <th>열차 상태</th>
-                <th>도착 메시지</th>
-                <th>현재 역</th>
-                <th>방면</th>
-                <th>도착 시각</th>
-            </tr>
-        </thead>
-        <tbody>
-            <!-- XML 데이터가 여기 추가됩니다 -->
-        </tbody>
-    </table>
+    <h1>실시간 도착 정보</h1>
+    <div id="station-container">실시간 정보를 불러오는 중...</div>
 
     <script>
-        // XML 데이터를 가져오는 함수
-        async function fetchXML() {
-            try {
-                const response = await fetch('http://swopenapi.seoul.go.kr/api/subway/sample/xml/realtimeStationArrival/0/5/%EC%84%9C%EC%9A%B8'); // 실제 XML URL로 변경
-                const xmlText = await response.text();
-                const parser = new DOMParser();
-                const xmlDoc = parser.parseFromString(xmlText, "application/xml");
-
-                displayData(xmlDoc);
-            } catch (error) {
-                console.error("XML 데이터를 가져오는 중 오류 발생:", error);
+        // 서버에서 XML 데이터를 불러오는 함수
+        
+function fetchXMLData() {
+    const xhr = new XMLHttpRequest();
+    xhr.open("GET", "http://swopenapi.seoul.go.kr/api/subway/sample/xml/realtimeStationArrival/ALL", true);  // 서버의 XML 파일 경로로 수정
+    xhr.onreadystatechange = function () {
+        if (xhr.readyState === 4) {
+            if (xhr.status === 200) {
+                parseXML(xhr.responseText);
+            } else {
+                console.error("XML 요청 실패: " + xhr.status);
+                document.getElementById("station-container").innerHTML = '데이터를 불러올 수 없습니다. 다시 시도해 주세요.';
             }
         }
-
-        // XML 데이터를 HTML 표로 표시하는 함수
-        function displayData(xmlDoc) {
-    const rows = xmlDoc.getElementsByTagName("row");
-    const tableBody = document.getElementById("arrival-table").querySelector("tbody");
-
-    for (let i = 0; i < rows.length; i++) {
-        const btrainNo = rows[i].getElementsByTagName("btrainNo")[0].textContent;
-        const btrainSttus = rows[i].getElementsByTagName("btrainSttus")[0].textContent;
-        const arvlMsg2 = rows[i].getElementsByTagName("arvlMsg2")[0].textContent;
-        const statnNm = rows[i].getElementsByTagName("statnNm")[0].textContent;
-        const trainLineNm = rows[i].getElementsByTagName("trainLineNm")[0].textContent;
-        const recptnDt = rows[i].getElementsByTagName("recptnDt")[0].textContent;
-
-        const row = document.createElement("tr");
-        row.innerHTML = `
-            <td>${btrainNo}</td>
-            <td>${btrainSttus}</td>
-            <td>${arvlMsg2}</td>
-            <td>${statnNm}</td>
-            <td>${trainLineNm}</td>
-            <td>${recptnDt}</td>
-        `;
-
-        // 열차 상태가 "급행"일 경우 배경색 변경
-        if (btrainSttus === "급행") {
-            row.style.backgroundColor = "skyblue";
-        }
-
-        tableBody.appendChild(row);
-    }
+    };
+    xhr.send();
 }
 
 
-        // 페이지 로드 시 XML 데이터를 가져옴
-        document.addEventListener("DOMContentLoaded", fetchXML);
+        // XML 데이터를 파싱하고 HTML에 표시하는 함수
+        function parseXML(xmlString) {
+    // XML 문자열을 DOM 객체로 변환
+    const parser = new DOMParser();
+    const xmlDoc = parser.parseFromString(xmlString, "application/xml");  // 수정된 부분
+
+    // station-container에 데이터 삽입
+    const container = document.getElementById("station-container");
+    const rows = xmlDoc.getElementsByTagName("row");
+
+    // 기존의 "실시간 정보를 불러오는 중..." 메시지를 제거
+    container.innerHTML = '';
+
+    // 각 row에 대해 정보를 처리하여 HTML 생성
+    for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const trainLine = row.getElementsByTagName("trainLineNm")[0].textContent;
+        const stationName = row.getElementsByTagName("statnNm")[0].textContent;
+        const arrivalMsg = row.getElementsByTagName("arvlMsg2")[0].textContent;
+
+        const stationDiv = document.createElement("div");
+        stationDiv.classList.add("station-info");
+
+        const title = document.createElement("h3");
+        title.textContent = `열차: ${trainLine} - 역: ${stationName}`;
+        stationDiv.appendChild(title);
+
+        const msg = document.createElement("p");
+        msg.textContent = `도착 메시지: ${arrivalMsg}`;
+        stationDiv.appendChild(msg);
+
+        container.appendChild(stationDiv);
+    }
+}
+
+        // 페이지가 로드되면 XML 데이터를 불러오는 함수 호출
+        window.onload = fetchXMLData;
     </script>
 </body>
 </html>
